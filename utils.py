@@ -36,6 +36,8 @@ def imgRectify(img, t, config):
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_gray = imgResize(img_gray, 256)
     img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
+    _, img_gray = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    
     h, w = img_gray.shape[:2]
     
     # inverse the green plate
@@ -48,7 +50,7 @@ def imgRectify(img, t, config):
     edges = cv2.Canny(img_gray, config["canny"][0], config["canny"][1])
     lines = cv2.HoughLines(edges, 1, np.pi/180, config["hough thresh"], min_theta=min_theta, max_theta=max_theta)
     
-    if lines is None: return binary
+    if lines is None: return img_gray
     
     left, right = [], []
     for line in lines:
@@ -66,9 +68,9 @@ def imgRectify(img, t, config):
     rot_theta = radian2angle(mean) - 90
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, rot_theta, 0.8)
-    _, binary = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask_rot = cv2.warpAffine(binary, M, (w, h))
-    _, mask_rot = cv2.threshold(mask_rot, config["binary thresh"], 255, cv2.THRESH_BINARY)
+    # _, binary = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    mask_rot = cv2.warpAffine(img_gray, M, (w, h))
+    _, mask_rot = cv2.threshold(mask_rot, 100, 255, cv2.THRESH_BINARY)
     
     # remove rivets and redundant lines
     for y in range(h):
@@ -132,3 +134,10 @@ def get_predict(net, data, id2labels, is_word):
         pred = torch.argmax(out[1:], dim=-1)
         res = [id2labels[int(first)]] + [id2labels[int(i)] for i in pred]
     return res
+
+def euqualizeHist(img):
+    r, g, b = cv2.split(img)
+    r1 = cv2.equalizeHist(r)
+    g1 = cv2.equalizeHist(g)
+    b1 = cv2.equalizeHist(b)
+    return cv2.merge([r1, g1, b1])
