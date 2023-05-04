@@ -36,13 +36,13 @@ def imgRectify(img, t, config):
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_gray = imgResize(img_gray, 256)
     img_gray = cv2.GaussianBlur(img_gray, (3, 3), 0)
-    _, img_gray = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
     h, w = img_gray.shape[:2]
     
     # inverse the green plate
     if t == GREEN_PLATE:
         img_gray = 255 - img_gray
+    _, img_gray = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
     toler = config["toler theta"]
     min_theta = angle2radian(90 - toler)

@@ -1,6 +1,6 @@
 {
     "MAX_WIDTH": 700,
-    "blur_ksize":3,
+    "blur_ksize": 3,
     "edge detection": {
         "Sobel ksize": 3,
         "thresh": 100,
@@ -12,20 +12,21 @@
     },
 
     "cut EPS": 3,
-    "minArea": 3000,
+    "minArea": 2500,
     "rect thresh": 0.4,
-    "aspect range": [1, 6],
+    "aspect range": [2.5, 5.5],
     "blue bound": [[100, 115, 115], [124, 255, 255]],
     "green bound": [[35, 10, 160], [70, 100, 200]],
-    "color thresh": 0.15,
+    "color thresh": 0.4,
 
     "rectify": {
-        "canny": [100, 200],
+        "canny": [150, 200],
         "toler theta": 30,
         "hough thresh": 60,
         "binary thresh": 100,
         "valid ratio": 0.8
     },
+
     "erode ksize": [2, 2],
     "peaks min interval": 2,
     "checkpoint directory": "checkpoints/"

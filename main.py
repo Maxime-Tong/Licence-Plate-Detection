@@ -38,27 +38,32 @@ def plateDetection(img, config):
     for cnt in contours:
         rect = cv2.boundingRect(cnt)
         x, y, w, h = rect
-        ratio = w / h
+        
+        min_area = cv2.minAreaRect(cnt)
+        min_w, min_h = min_area[1]
+        if min_w < min_h:
+            min_h, min_w = min_w, min_h
+        ratio = min_w / min_h
         
         if ratio < config["aspect range"][0] or ratio > config["aspect range"][1]: continue
         
         area = cv2.contourArea(cnt)
-        if w * h < config["minArea"]: continue
+        if area < config["minArea"]: continue
         
-        rectangularity = area / (w * h)
+        rectangularity = area / (min_w * min_h)
         if rectangularity < config["rect thresh"]: continue
-    
-        blue = blue_mask[y:y+h, x:x+w]
-        blue_weight = blue.sum() / 255
-
-        green = green_mask[y:y+h, x:x+w]
-        green_weight = green.sum() / 255
-
-        if blue_weight > config["color thresh"] * h * w and blue_weight > green_weight:
-            blocks.append((BLUE_PLATE, img[y:y+h, x+EPS:x+w-EPS]))
-        elif green_weight > config["color thresh"] * h * w:
-            blocks.append((GREEN_PLATE, img[y:y+h, x+EPS:x+w-EPS])) 
         
+        blue = img[y:y+h, x:x+w][:, :, 0]
+        blue_weight = blue.sum() / 255
+        
+        green = img[y:y+h, x:x+w][:, :, 1]
+        green_weight = green.sum() / 255
+        
+        if blue_weight > config["color thresh"] * min_h * min_w and blue_weight > green_weight:
+            blocks.append((BLUE_PLATE, img[y:y+h, x+EPS:x+w-EPS]))
+        elif green_weight > config["color thresh"] * min_h * min_w:
+            blocks.append((GREEN_PLATE, img[y:y+h, x+EPS:x+w-EPS])) 
+            
     return blocks
 
 def plateSegamentation(plates, config):
@@ -134,17 +139,11 @@ def easyCheck(directory, config, chinese_net, chars_net, chinese_id2labels, char
         img = imgResize(img, 700)
         h, w = img.shape[:2]
         
-        balance_img = euqualizeHist(img)
+        blue = img[:, :, 0]
+        blue_weight = blue.sum() / 255
         
-        img_hsv = cv2.cvtColor(balance_img, cv2.COLOR_BGR2HSV)
-        blue_bound = np.array(config["blue bound"])
-        blue_mask = cv2.inRange(img_hsv, blue_bound[0], blue_bound[1])
-        
-        green_bound = np.array(config["green bound"])
-        green_mask = cv2.inRange(img_hsv, green_bound[0], green_bound[1])
-        
-        blue_weight = np.sum(blue_mask / 255)
-        green_weight = np.sum(green_mask / 255)
+        green = img[:, :, 1]
+        green_weight = green.sum() / 255
 
         t = blue_weight < green_weight
         
@@ -160,7 +159,7 @@ def easyCheck(directory, config, chinese_net, chars_net, chinese_id2labels, char
         toler = 30
         min_theta = angle2radian(90 - toler)
         max_theta = angle2radian(90 + toler) 
-        edges = cv2.Canny(img_gray, 100, 200)
+        edges = cv2.Canny(img_gray, config["rectify"]["canny"][0], config["rectify"]["canny"][1])
         lines = cv2.HoughLines(edges, 1, np.pi/180, 50, min_theta=min_theta, max_theta=max_theta)
         
         left, right = [], []
@@ -259,8 +258,6 @@ def easyCheck(directory, config, chinese_net, chars_net, chinese_id2labels, char
             char = mask_rot[y1-2:y2+2, x1-3:x2+3]
             char = cv2.resize(char, (20, 20))
             chars.append(char)
-            # cv2.imshow("test", char)
-            # cv2.waitKey(0)
         res = plateRecognition(chars, chinese_net, chars_net, chinese_id2labels, chars_id2labels)
         print(f"img name: {img_name} Licence plate: " + "".join(res[:2]) + "·"  + "".join(res[2:]))
         
