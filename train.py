@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 import torch.nn.functional as F
 import json
 import numpy as np
+import time
 
 from model import PNet, Licence
 
@@ -48,6 +49,7 @@ if __name__ == "__main__":
     base_dir = r"data\VehicleLicense\Data"
     dataset_tag = ["chinese", "chars"]
     for name in dataset_tag:
+        t1 = time.time()
         with open(f"data\VehicleLicense\{name}_match.json", encoding="utf-8") as f:
             labels_map = json.load(f)
         torch.manual_seed(3407)
@@ -67,6 +69,7 @@ if __name__ == "__main__":
         for epoch in range(EPOCHS):
             train(train_loader, net, loss_fn, optimizer, epoch, 10)
         evaluate(test_loader, net)
-        torch.save(net.state_dict(), f'checkpoints/{name}_Pnet.pt')
-
+        t2 = time.time()
+        # torch.save(net.state_dict(), f'checkpoints/{name}_Pnet.pt')
+        print(t2 - t1)
         

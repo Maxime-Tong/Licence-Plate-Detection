@@ -4,7 +4,10 @@ import os
 import cv2
 import numpy as np
 import torch
+import time
+import matplotlib.pyplot as plt
 
+import utils
 from utils import BLUE_PLATE, GREEN_PLATE
 from utils import angle2radian, radian2angle
 from utils import imgResize, edgesDetection, morphology, imgRectify, get_peaks, get_predict, euqualizeHist
@@ -113,9 +116,14 @@ def plateSegamentation(plates, config):
         for x1, x2 in pairs:
             y_hist = erode[:, x1:x2].sum(axis=1)
             y_zero = np.arange(len(y_hist))[y_hist == 0]
-            k = np.argmax(y_zero[1:] - y_zero[:-1])
-            y1, y2 = y_zero[k], y_zero[k+1]
+            if y_zero.size != 0:
+                k = np.argmax(y_zero[1:] - y_zero[:-1])
+                y1, y2 = y_zero[k], y_zero[k+1]
+            else:
+                y1, y2 = 0, len(y_hist)
             char = plate_rect[y1:y2, x1-5:x2+5]
+            if char.size == 0:
+                continue
             char = cv2.resize(char, (20, 20))
             chars.append(char)
         res.append(chars)
@@ -261,13 +269,24 @@ def easyCheck(directory, config, chinese_net, chars_net, chinese_id2labels, char
         res = plateRecognition(chars, chinese_net, chars_net, chinese_id2labels, chars_id2labels)
         print(f"img name: {img_name} Licence plate: " + "".join(res[:2]) + "·"  + "".join(res[2:]))
         
-
+def concate_img(imgs):
+    origin_img = cv2.resize(imgs[0], (500, 250))
+    origin_img = cv2.cvtColor(origin_img, cv2.COLOR_BGR2RGB)
+    plate_img = cv2.resize(imgs[1], (250, 100))
+    plate_img = cv2.cvtColor(plate_img, cv2.COLOR_BGR2RGB)
+    background = np.zeros_like(plate_img)
+    plate_text = utils.putText(background, imgs[2])
+    x1 = np.concatenate([plate_img, plate_text], axis=1)
+    x2 = np.concatenate([origin_img, x1], axis=0)
+    return x2
+    
 if __name__ == "__main__":
     config_path = "config.json"
     with open(config_path, 'r') as f:
         config = json.load(f)
             
     # load model
+    t0 = time.time()
     cp_dir = config["checkpoint directory"]
     cp_chinese = os.path.join(cp_dir, "chinese_Pnet.pt")
     cp_chars = os.path.join(cp_dir, "chars_Pnet.pt")
@@ -284,25 +303,48 @@ if __name__ == "__main__":
     
     chinese_net.load_state_dict(torch.load(cp_chinese))
     chars_net.load_state_dict(torch.load(cp_chars))
-    
-    
+    t1 = time.time()
+    print(t1 - t0)
     easyCheck("images\easy", config, chinese_net, chars_net, chinese_id2labels, chars_id2labels)
-    
     degrees = [ "medium", "difficult"]
+    times = []
+    imgs_show = []
     for degree in degrees:
         print(f"#### {degree} ####")
         directory = os.path.join("images", degree)
         for img_name in os.listdir(directory):
             img_path = os.path.join(directory, img_name)
-            # img_path = r"images\medium\2-2.jpg"
             img = cv2.imread(img_path)
+                        
+            t1 = time.time()
+            
             img = imgResize(img, config["MAX_WIDTH"])
-            # img = euqualizeHist(img)
             plates = plateDetection(img, config)
+            t2 = time.time()
+            
             plates_char = plateSegamentation(plates, config)
             
-            # print(f"# of licence plates detected: {len(plates_char)}")
+            t3 = time.time()
+            
             for chars in plates_char:
                 res = plateRecognition(chars, chinese_net, chars_net, chinese_id2labels, chars_id2labels)
-                print(f"img name: {img_name} Licence plate: " + "".join(res[:2]) + "·"  + "".join(res[2:]))
+                plate_text = "".join(res[:2]) + "·"  + "".join(res[2:])
+                print(f"img name: {img_name} Licence plate: " + plate_text)
+            
+            t4 = time.time()
+            times.append([t2-t1, t3-t2, t4-t3])
+            
+            res_vis = concate_img([img, plates[0][1], plate_text])
+            imgs_show.append(res_vis)
+    times = np.array(times)
     
+    n_cols, n_rows = 3, 2
+    plt.figure()
+    for count, img in enumerate(imgs_show):
+        # w, h = plate.shape[:2]
+        # print(img.shape)
+        plt.subplot(n_rows, n_cols, count + 1)
+        plt.imshow(img, cmap="gray")
+        plt.axis('off')
+    plt.savefig("result_visualization.png")
+        

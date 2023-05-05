@@ -1,26 +1,12 @@
 # Licence-Plate-Detection
-This repo shows how to detect licence plate with opencv, we use tranditional method + dp method to recognite the plate.
 ## trainning PNet
+运行以下命令可以训练识别神经网络
 ```shell
 python train.py
 ```
 ## Detection
+运行以下命令即可生成识别结果，并生成可视化结果`result_visualization.png`
 ```shell
 python main.py
 ```
-## PNet网络结构
-| model   |      hyper-parameters      |
-|----------|:-------------:|
-| 输入图像 |  20 x 20 |
-| conv | in channels=1, out channels=8, kernel size = 5, padding = 2    | 
-| BatchNorm | num features = 8 |
-| maxPooling | kernel size=2, stride=2 |
-| conv | in channels=8, out channels=16, kernel size = 5, padding = 2  | 
-| BatchNorm | num features = 8 |
-| maxPooling | kernel size=2, stride=2 |
-| Linear | in features=5*5*16, out features=128|
-| Dropout | p=0.5 |
-| Linear | in features=128, out features=64|
-| Dropout | p=0.5 |
-| Linear | in features=64, out features=N_classes|
-|Softmax|
+识别算法最优超参文件见`config.json`

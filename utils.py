@@ -1,6 +1,7 @@
 import cv2
 import torch
 import numpy as np
+from PIL import ImageFont,ImageDraw,Image
 
 BLUE_PLATE = 0
 GREEN_PLATE = 1
@@ -141,3 +142,13 @@ def euqualizeHist(img):
     g1 = cv2.equalizeHist(g)
     b1 = cv2.equalizeHist(b)
     return cv2.merge([r1, g1, b1])
+
+def putText(img, text):
+    fontpath = "simsun.ttc"
+    b,g,r,a = 255,255,255,0
+    font=ImageFont.truetype(fontpath, 15)
+    img_pil = Image.fromarray(img)
+    draw = ImageDraw.Draw(img_pil)
+    draw.text((90, 40), text, font=font, fill=(b,g,r,a))
+    img = np.array(img_pil)
+    return img
